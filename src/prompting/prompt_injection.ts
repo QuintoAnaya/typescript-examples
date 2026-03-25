@@ -2,7 +2,7 @@
  * Prompt Injection Attack and Defense
  * 
  * Costs & Safety: Real API calls; keep inputs small. Requires API key(s).
- * Module reference: [Pattern 1: Prompt Injection](https://aitutorial.dev/prompt-optimization-testing#pattern-1-prompt-injection)
+ * Module reference: [Prompt Injection](https://aitutorial.dev/prompting/prompt-security#prompt-injection)
  * Why: Demonstrates how prompt injection attacks work and how to defend against them using structured prompts with XML tags.
  */
 
