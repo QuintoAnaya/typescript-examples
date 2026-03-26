@@ -3,44 +3,63 @@
  *
  * Costs & Safety: Real API calls; keep inputs small. Requires API key(s).
  * Module reference: [Basic RAG Implementation](https://aitutorial.dev/rag/rag-fundamentals#basic-rag-implementation)
- * Why: Demonstrates the fundamental RAG pattern in its simplest form: fetch today's top stories, use them as context, answer a question the LLM alone cannot.
+ * Why: Demonstrates the fundamental RAG pattern in its simplest form: retrieve relevant context, augment the prompt, generate an answer.
  */
 
 import { generateText } from 'ai';
 import { createModel } from './utils.js';
 
 /**
- * Fetch a web page and return its text content (stripped of HTML tags)
+ * Simulate a company knowledge base that the LLM has never seen.
+ * In production, this would be a database, API, or document store.
  */
-async function fetchPage(url: string): Promise<string> {
-    const response = await fetch(url);
-    const html = await response.text();
-    return html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+const companyDocuments = [
+    'MySecretCompany Q4 2024 Financial Report: Revenue was $2.3B, up 15% year-over-year. Operating margin improved to 22%. Net income was $450M.',
+    'MySecretCompany Q3 2024 Financial Report: Revenue was $1.9B. The company launched MindFlow Pro, which drove 30% of new enterprise deals.',
+    'MySecretCompany Engineering Blog - January 2025: We migrated our infrastructure to Kubernetes, reducing deployment times by 60%.',
+    'MySecretCompany HR Policy: PTO is 25 days per year. Remote work is allowed 3 days per week. Health insurance covers dental and vision.',
+    'MySecretCompany Product Roadmap 2025: AI-powered mind mapping features planned for Q2. Mobile app redesign scheduled for Q3.',
+];
+
+/**
+ * Simple keyword search — find documents that match the query terms
+ */
+function retrieve(documents: string[], query: string, topK = 2): string[] {
+    const queryWords = query.toLowerCase().split(/\s+/);
+    const scored = documents.map(doc => ({
+        doc,
+        score: queryWords.filter(w => doc.toLowerCase().includes(w)).length,
+    }));
+    return scored
+        .sort((a, b) => b.score - a.score)
+        .slice(0, topK)
+        .map(s => s.doc);
 }
 
 /**
  * Main function that demonstrates the simplest possible RAG
  *
  * This example shows RAG in three steps:
- * 1. RETRIEVE — fetch the current front page of Hacker News
- * 2. AUGMENT — insert the content into the prompt as context
+ * 1. RETRIEVE — find relevant documents from a knowledge base
+ * 2. AUGMENT — insert the documents into the prompt as context
  * 3. GENERATE — have the LLM answer using only that context
  *
- * The model's training data has a cutoff date, so it can't know today's top stories.
- * RAG bridges this gap by retrieving fresh data at query time.
+ * Without RAG, the model would say "I don't have access to MySecretCompany's data."
+ * With RAG, it answers accurately from the company's own documents.
  */
 async function main(): Promise<void> {
     const model = createModel();
 
-    // Step 1: RETRIEVE — fetch the current Hacker News front page
-    const url = 'https://news.ycombinator.com';
-    console.log(`Fetching: ${url}`);
-    const pageContent = await fetchPage(url);
-    console.log(`Retrieved ${pageContent.length} characters`);
-
-    // Step 2: AUGMENT + GENERATE — pass the content as context and ask a question
-    const question = 'What are the top stories on Hacker News right now? Summarize the main topics.';
+    // Step 1: RETRIEVE — find relevant documents for the question
+    const question = 'What was MySecretCompany Q4 2024 revenue?';
     console.log(`Question: ${question}`);
+
+    const relevantDocs = retrieve(companyDocuments, question);
+    console.log(`Retrieved ${relevantDocs.length} relevant documents`);
+    relevantDocs.forEach((doc, i) => console.log(`  [${i + 1}] ${doc.slice(0, 80)}...`));
+
+    // Step 2: AUGMENT + GENERATE — pass the documents as context
+    const context = relevantDocs.join('\n\n');
 
     const { text } = await generateText({
         model,
@@ -51,7 +70,7 @@ async function main(): Promise<void> {
             },
             {
                 role: 'user',
-                content: `Context:\n${pageContent.slice(0, 8000)}\n\nQuestion: ${question}`,
+                content: `Context:\n${context}\n\nQuestion: ${question}`,
             },
         ],
     });
