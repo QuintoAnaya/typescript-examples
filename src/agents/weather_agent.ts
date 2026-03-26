@@ -12,7 +12,7 @@ import { join } from 'path';
 import { fileURLToPath } from 'url';
 
 // Load environment variables
-config({ path: join(process.cwd(), 'env', '.env') });
+config({ path: join(process.cwd(), 'env', '.env'), quiet: true });
 
 /**
  * Main function demonstrating a simple weather agent using LangChain

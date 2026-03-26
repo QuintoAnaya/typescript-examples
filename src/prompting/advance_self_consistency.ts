@@ -1,36 +1,28 @@
 /**
  * Advanced Self-Consistency: Multiple Reasoning Paths with Majority Voting
- * 
+ *
  * Costs & Safety: Real API calls; generates multiple responses. Requires API key(s).
  * Module reference: [Self-Consistency: Voting for Reliability](https://aitutorial.dev/context-engineering-prompt-design/advanced-techniques#self-consistency-voting-for-reliability)
  * Why: Improves accuracy by generating multiple chain-of-thought reasoning paths and taking
  *      a majority vote. Reduces the impact of individual reasoning errors.
  */
 
-import OpenAI from 'openai';
-import { config } from 'dotenv';
-import { join } from 'path';
+import { generateText } from 'ai';
+import { createModel } from './utils.js';
 
-// Load environment variables from env/.env
-config({ path: join(process.cwd(), 'env', '.env') });
-
-// Setup
-const MODEL = 'gpt-4o-mini';
-
-const client = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
-});
+const model = createModel();
 
 /**
- * Main function that demonstrates advanced self-consistency technique
- * 
- * This example shows how to improve accuracy using self-consistency by generating multiple reasoning paths and taking a majority vote.
- * 
+ * Demonstrates the advanced self-consistency technique for improved accuracy.
+ *
+ * This example shows how to generate multiple chain-of-thought reasoning paths
+ * for the same problem and use majority voting to pick the most reliable answer.
+ *
  * This technique is particularly effective for problems where reasoning matters,
  * as it reduces the impact of individual reasoning errors.
  */
 async function main(): Promise<void> {
-    const problem = `    A store has 15 apples. They sell 3 apples in the morning and 4 apples in the afternoon. 
+    const problem = `A store has 15 apples. They sell 3 apples in the morning and 4 apples in the afternoon.
     Then they receive a delivery of 8 more apples. How many apples do they have at the end of the day?`;
 
     // Step 1: Generate multiple chain-of-thought reasoning paths for the same problem
@@ -39,15 +31,17 @@ async function main(): Promise<void> {
     // Step 2: Extract the final answer from each path
     const answers = extractAnswersFromPaths(reasoningPaths);
 
-    // Step 3: Take a majority vote to determine the final answer
+    // Step 3: Take a majority vote and display results
     displayResults(reasoningPaths, answers);
 }
 
 /**
- * Step 1: Generate multiple chain-of-thought reasoning paths
+ * Generate multiple chain-of-thought reasoning paths at varying temperatures
  */
 async function generateReasoningPaths(problem: string, numPaths: number): Promise<string[]> {
-    console.log(`\nGenerating ${numPaths} reasoning paths...\n`);
+    console.log('')
+    console.log(`Generating ${numPaths} reasoning paths...`);
+    console.log('')
 
     const temperatures = [0.3, 0.5, 0.7, 0.9, 1.0].slice(0, numPaths);
 
@@ -55,23 +49,24 @@ async function generateReasoningPaths(problem: string, numPaths: number): Promis
         .reduce(async (accPromise, i) => {
             const acc = await accPromise;
             const temperature = temperatures[i] || 0.7;
-            console.log(`Path ${i + 1}/${numPaths} (temperature: ${temperature})...`);
+            console.log(`  Path ${i + 1}/${numPaths} (temperature: ${temperature})...`);
 
-            const prompt = `Solve the following problem step by step. Show your reasoning and end with "The answer is: [your answer]".
-
-    Problem: ${problem}
-
-    Let's think step by step:`;
-
-            const response = await client.chat.completions.create({
-                model: MODEL,
-                messages: [{ role: 'user', content: prompt }],
+            const response = await generateText({
+                model,
+                messages: [
+                    {
+                        role: 'system',
+                        content: 'You are a careful math tutor. Solve problems step by step and end with "The answer is: [your answer]".',
+                    },
+                    {
+                        role: 'user',
+                        content: `Solve the following problem step by step.\n\nProblem: ${problem}\n\nLet's think step by step:`,
+                    },
+                ],
             });
 
-            const path = response.choices[0].message.content || '';
-
+            const path = response.text;
             await new Promise(resolve => setTimeout(resolve, 100));
-
             return [...acc, path];
         }, Promise.resolve([] as string[]));
 
@@ -79,7 +74,7 @@ async function generateReasoningPaths(problem: string, numPaths: number): Promis
 }
 
 /**
- * Step 2: Extract the final answer from each reasoning path
+ * Extract the final answer from each reasoning path
  */
 function extractAnswersFromPaths(reasoningPaths: string[]): string[] {
     const answers = reasoningPaths.map(extractAnswer)
@@ -88,7 +83,7 @@ function extractAnswersFromPaths(reasoningPaths: string[]): string[] {
 }
 
 /**
- * Step 3: Take a majority vote and display results
+ * Take a majority vote and display all results
  */
 function displayResults(reasoningPaths: string[], answers: string[]): void {
     const majorityAnswer = majorityVote(answers);
@@ -100,7 +95,9 @@ function displayResults(reasoningPaths: string[], answers: string[]): void {
         ? (majorityCount / answers.length) * 100
         : 0;
 
-    console.log('\n=== Reasoning Paths ===\n');
+    console.log('')
+    console.log('=== Reasoning Paths ===');
+    console.log('')
     reasoningPaths.forEach((path, index) => {
         console.log(`--- Path ${index + 1} ---`);
         console.log(path);
@@ -109,20 +106,23 @@ function displayResults(reasoningPaths: string[], answers: string[]): void {
         console.log('');
     });
 
-    console.log('=== Results ===\n');
-    console.log('All Answers:', answers);
+    console.log('=== Results ===');
+    console.log('')
+    console.log(`All Answers: ${JSON.stringify(answers)}`);
     console.log(`Majority Answer: ${majorityAnswer}`);
     console.log(`Confidence: ${confidence.toFixed(1)}%`);
-    console.log(`\nFinal Answer: ${majorityAnswer}`);
+    console.log('')
+    console.log(`Final Answer: ${majorityAnswer}`);
 
     const expectedAnswer = '16';
     const isCorrect = majorityAnswer.toLowerCase().trim() === expectedAnswer;
-    console.log(`\nExpected Answer: ${expectedAnswer}`);
+    console.log('')
+    console.log(`Expected Answer: ${expectedAnswer}`);
     console.log(`Correct: ${isCorrect ? '✓' : '✗'}`);
 }
 
 /**
- * Extract the final answer from a reasoning path
+ * Extract the final answer from a reasoning path.
  * Looks for patterns like "The answer is: X" or "Answer: X"
  */
 function extractAnswer(reasoningPath: string): string | null {
@@ -162,7 +162,5 @@ function majorityVote(answers: string[]): string {
         .reduce((max, [answer, count]) => count > max[1] ? [answer, count] : max, ['', 0]);
     return majorityAnswer;
 }
-
-
 
 await main();
