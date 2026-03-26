@@ -33,7 +33,7 @@ import * as path from "path";
 import * as fs from "fs";
 
 
-dotenv.config({ path: path.resolve(process.cwd(), "env/.env"), override: true });
+dotenv.config({ path: path.resolve(process.cwd(), "env/.env"), override: true, quiet: true });
 
 export async function main() {
     console.log("Initializing RAG Evaluation...");

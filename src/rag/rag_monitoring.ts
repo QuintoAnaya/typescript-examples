@@ -19,7 +19,7 @@ import * as fs from "fs";
 import * as dotenv from "dotenv";
 import * as path from "path";
 
-dotenv.config({ path: path.resolve(process.cwd(), "env/.env"), override: true });
+dotenv.config({ path: path.resolve(process.cwd(), "env/.env"), override: true, quiet: true });
 
 // ==========================================
 // Part 0: Main Execution

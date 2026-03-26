@@ -4,7 +4,7 @@ import { config } from 'dotenv';
 import { join } from 'path';
 
 // Load environment variables from env/.env file
-config({ path: join(process.cwd(), 'env', '.env') });
+config({ path: join(process.cwd(), 'env', '.env'), quiet: true });
 
 const models = {
     openai: openai(process.env.OPENAI_MODEL || 'gpt-4.1-nano'),

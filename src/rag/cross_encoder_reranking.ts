@@ -15,7 +15,7 @@ import { join } from 'path';
 import { LexicalRetriever } from './utils/lexical_retriever';
 import { SemanticRetriever } from './utils/semantic_retriever';
 
-config({ path: join(process.cwd(), 'env', '.env') });
+config({ path: join(process.cwd(), 'env', '.env'), quiet: true });
 
 // OpenAI client needed for embeddings (not available in Vercel AI SDK)
 const openai = new OpenAI();
